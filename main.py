@@ -1,17 +1,22 @@
 import os
-import threading
 import asyncio
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from aiohttp import web
 import discord
 
-# --- Renderのポート検出用Webサーバー ---
-def run_http_server():
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
-    server.serve_forever()
+# --- Renderのポート監視用ミニWebサーバー（aiohttp使用） ---
+async def handle(request):
+    return web.Response(text="Bot is running!")
 
-# Webサーバーを別スレッドで裏で動かす
-threading.Thread(target=run_http_server, daemon=True).start()
+async def start_web_server():
+    app = web.Application()
+    app.add_routes([web.get('/', handle)])
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"Web server started on port {port}")
 
 # --- Discord Botの処理 ---
 intents = discord.Intents.default()
@@ -29,7 +34,6 @@ async def on_ready():
     print(f"=== Logged in as {client.user} (ID: {client.user.id}) ===")
     print("Waiting for guilds to sync...")
     
-    # サーバー情報が完全に読み込まれるまで3秒待つ
     await asyncio.sleep(3)
     
     connected = False
@@ -48,8 +52,15 @@ async def on_ready():
     if not connected:
         print(f"WARNING: Voice channel with ID {VOICE_CHANNEL_ID} was not found in any connected guilds.")
 
-TOKEN = os.environ.get("DISCORD_TOKEN")
-if TOKEN:
-    client.run(TOKEN)
-else:
-    print("DISCORD_TOKEN is not set.")
+async def main():
+    # WebサーバーとDiscordボットを同時に起動する
+    token = os.environ.get("DISCORD_TOKEN")
+    if not token:
+        print("DISCORD_TOKEN is not set.")
+        return
+
+    await start_web_server()
+    await client.start(token)
+
+if __name__ == "__main__":
+    asyncio.run(main())
