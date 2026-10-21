@@ -1,21 +1,23 @@
 import os
 import threading
 import asyncio
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from flask import Flask
 import discord
 
-# --- 1. ポートを確実に開くためのWebサーバー（エラー表示付き） ---
-def run_http_server():
-    try:
-        port = int(os.environ.get("PORT", 8080))
-        server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
-        print(f"✅ HTTP server successfully started on port {port}")
-        server.serve_forever()
-    except Exception as e:
-        print(f"❌ HTTP server failed to start: {e}")
+# --- 1. Flaskを使った確実にポートを開くWebサーバー ---
+app = Flask(__name__)
 
-# 別スレッドでWebサーバーを起動
-threading.Thread(target=run_http_server, daemon=True).start()
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 8080))
+    # host='0.0.0.0' で外部からのアクセスを受け付ける
+    app.run(host='0.0.0.0', port=port)
+
+# 別スレッドでWebサーバーを即座に起動
+threading.Thread(target=run_web, daemon=True).start()
 
 
 # --- 2. Discord Botの処理 ---
