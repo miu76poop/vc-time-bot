@@ -1,29 +1,19 @@
 import os
-import asyncio
-from aiohttp import web
+import threading
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 import discord
 
-# --- Renderのポート監視用ミニWebサーバー（aiohttp使用） ---
-async def handle(request):
-    return web.Response(text="Bot is running!")
-
-async def start_web_server():
-    app = web.Application()
-    app.add_routes([web.get('/', handle)])
-    runner = web.AppRunner(app)
-    await runner.setup()
-    
+# --- Renderの24時間スリープ防止用Webサーバー ---
+def run_http_server():
     port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-    print(f"Web server started on port {port}")
+    server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
+    server.serve_forever()
+
+# 別スレッドでWebサーバーを起動
+threading.Thread(target=run_http_server, daemon=True).start()
 
 # --- Discord Botの処理 ---
-intents = discord.Intents.default()
-intents.voice_states = True
-intents.message_content = True
-intents.guilds = True
-
+intents = discord.Intents.all()  # すべてのインテントを有効化してトラブルを防ぐ
 client = discord.Client(intents=intents)
 
 # 指定のボイスチャンネルID
@@ -31,36 +21,27 @@ VOICE_CHANNEL_ID = 1462536983619309603
 
 @client.event
 async def on_ready():
-    print(f"=== Logged in as {client.user} (ID: {client.user.id}) ===")
-    print("Waiting for guilds to sync...")
+    print(f"========================================")
+    print(f" ログイン成功！ Bot名: {client.user} (ID: {client.user.id})")
+    print(f"========================================")
     
-    await asyncio.sleep(3)
-    
-    connected = False
+    # 参加しているすべてのサーバーを確認
     for guild in client.guilds:
-        print(f"Checking guild: {guild.name} (ID: {guild.id})")
+        print(f"参加サーバー: {guild.name} (ID: {guild.id})")
         channel = guild.get_channel(VOICE_CHANNEL_ID)
         if channel:
             try:
                 await channel.connect(reconnect=True)
-                print(f"SUCCESS: Connected to voice channel '{channel.name}' in guild '{guild.name}'")
-                connected = True
-                break
+                print(f"✨ 【大成功】ボイスチャンネル '{channel.name}' に接続しました！")
+                return
             except Exception as e:
-                print(f"ERROR: Failed to connect to voice in guild {guild.name}: {e}")
+                print(f"❌ 接続エラー: {e}")
                 
-    if not connected:
-        print(f"WARNING: Voice channel with ID {VOICE_CHANNEL_ID} was not found in any connected guilds.")
+    print("⚠️ 警告: 指定されたIDのボイスチャンネルが見つかりませんでした。ボットがそのサーバーに参加しているか確認してください。")
 
-async def main():
-    # WebサーバーとDiscordボットを同時に起動する
-    token = os.environ.get("DISCORD_TOKEN")
-    if not token:
-        print("DISCORD_TOKEN is not set.")
-        return
-
-    await start_web_server()
-    await client.start(token)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+# ボットの起動
+TOKEN = os.environ.get("DISCORD_TOKEN")
+if TOKEN:
+    client.run(TOKEN)
+else:
+    print("エラー: DISCORD_TOKEN が設定されていません。")
