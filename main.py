@@ -5,11 +5,12 @@ import discord
 
 # --- Renderのポート検出用Webサーバー ---
 def run_http_server():
+    # Renderが指定するポートを確実に取得する（デフォルトは8080）
     port = int(os.environ.get("PORT", 8080))
     server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
     server.serve_forever()
 
-# Webサーバーを裏で動かす
+# Webサーバーを別スレッドで裏で動かす
 threading.Thread(target=run_http_server, daemon=True).start()
 
 # --- Discord Botの処理 ---
