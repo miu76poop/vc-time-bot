@@ -1,46 +1,36 @@
-import discord
-from discord.ext import tasks
-import datetime
 import os
+import discord
+from flask import Flask
+from threading import Thread
 
+# 1. Renderに「ポートを開いているWebアプリだよ」と教えるための簡易サーバー
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# 2. Discord Botのメイン処理
 intents = discord.Intents.default()
-intents.voice_states = True
+intents.voice_states = True  # VCの検知に必要なら
+intents.message_content = True
+
 client = discord.Client(intents=intents)
-
-# --------【ここを自分のVCのチャンネルIDに書き換える】--------
-TARGET_VC_ID = 1462536983619309603  # ← ここを自分のVCのIDにする
-# ---------------------------------------------------------
-
-# トークンは安全な場所（Koyeb）から自動で読み込みます
-TOKEN = os.environ.get('DISCORD_TOKEN')
-
-start_time = None
 
 @client.event
 async def on_ready():
-    global start_time
-    print(f'ログインしました: {client.user}')
-    
-    channel = client.get_channel(TARGET_VC_ID)
-    if channel:
-        await channel.connect(reconnect=True)
-        start_time = datetime.datetime.now()
-        print(f'{channel.name} に接続しました！')
-        update_channel_name.start()
+    print(f'Logged in as {client.user}')
 
-@tasks.loop(minutes=10)
-async def update_channel_name():
-    global start_time
-    if start_time:
-        elapsed = datetime.datetime.now() - start_time
-        hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        
-        time_str = f"{hours}:{minutes:02d}:{seconds:02d}"
-        
-        channel = client.get_channel(TARGET_VC_ID)
-        if channel:
-            new_name = f"voice-channel [{time_str}]"
-            await channel.edit(name=new_name)
+# トークンを環境変数から安全に取得
+TOKEN = os.environ.get('DISCORD_TOKEN')
 
-client.run(TOKEN)
+if __name__ == "__main__":
+    keep_alive()  # 簡易サーバーを裏で起動
+    client.run(TOKEN)
