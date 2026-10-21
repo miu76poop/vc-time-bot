@@ -1,5 +1,6 @@
 import os
 import threading
+import asyncio
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import discord
 
@@ -16,6 +17,7 @@ threading.Thread(target=run_http_server, daemon=True).start()
 intents = discord.Intents.default()
 intents.voice_states = True
 intents.message_content = True
+intents.guilds = True
 
 client = discord.Client(intents=intents)
 
@@ -25,10 +27,14 @@ VOICE_CHANNEL_ID = 1462536983619309603
 @client.event
 async def on_ready():
     print(f"=== Logged in as {client.user} (ID: {client.user.id}) ===")
+    print("Waiting for guilds to sync...")
     
-    # すべてのギルド（サーバー）をループして、目的のボイスチャンネルを探して接続する
+    # サーバー情報が完全に読み込まれるまで少し待つ（3秒）
+    await asyncio.sleep(3)
+    
     connected = False
     for guild in client.guilds:
+        print(f"Checking guild: {guild.name} (ID: {guild.id})")
         channel = guild.get_channel(VOICE_CHANNEL_ID)
         if channel:
             try:
