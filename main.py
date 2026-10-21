@@ -4,14 +4,17 @@ import asyncio
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import discord
 
-# --- 1. Renderのポート要件を満たすためのWebサーバー ---
+# --- 1. ポートを確実に開くためのWebサーバー（エラー表示付き） ---
 def run_http_server():
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
-    print(f"HTTP server started on port {port}")
-    server.serve_forever()
+    try:
+        port = int(os.environ.get("PORT", 8080))
+        server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
+        print(f"✅ HTTP server successfully started on port {port}")
+        server.serve_forever()
+    except Exception as e:
+        print(f"❌ HTTP server failed to start: {e}")
 
-# 別スレッドでWebサーバーを常時稼働させる（これでポートが開き、スリープも防げる）
+# 別スレッドでWebサーバーを起動
 threading.Thread(target=run_http_server, daemon=True).start()
 
 
@@ -28,7 +31,6 @@ async def on_ready():
     print(f" 参加サーバー数: {len(client.guilds)}")
     print(f"========================================")
     
-    # サーバーデータの同期を少し待つ
     await asyncio.sleep(3)
     
     if len(client.guilds) == 0:
