@@ -5,7 +5,6 @@ import discord
 
 # --- Renderのポート検出用Webサーバー ---
 def run_http_server():
-    # Renderが指定するポートを確実に取得する（デフォルトは8080）
     port = int(os.environ.get("PORT", 8080))
     server = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
     server.serve_forever()
@@ -25,16 +24,23 @@ VOICE_CHANNEL_ID = 1462536983619309603
 
 @client.event
 async def on_ready():
-    print(f"Logged in as {client.user}")
-    try:
-        channel = client.get_channel(VOICE_CHANNEL_ID)
+    print(f"=== Logged in as {client.user} (ID: {client.user.id}) ===")
+    
+    # すべてのギルド（サーバー）をループして、目的のボイスチャンネルを探して接続する
+    connected = False
+    for guild in client.guilds:
+        channel = guild.get_channel(VOICE_CHANNEL_ID)
         if channel:
-            await channel.connect(reconnect=True)
-            print(f"Connected to voice channel: {channel.name}")
-        else:
-            print(f"Voice channel with ID {VOICE_CHANNEL_ID} not found.")
-    except Exception as e:
-        print(f"Failed to connect to voice: {e}")
+            try:
+                await channel.connect(reconnect=True)
+                print(f"SUCCESS: Connected to voice channel '{channel.name}' in guild '{guild.name}'")
+                connected = True
+                break
+            except Exception as e:
+                print(f"ERROR: Failed to connect to voice in guild {guild.name}: {e}")
+                
+    if not connected:
+        print(f"WARNING: Voice channel with ID {VOICE_CHANNEL_ID} was not found in any connected guilds.")
 
 TOKEN = os.environ.get("DISCORD_TOKEN")
 if TOKEN:
