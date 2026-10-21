@@ -29,7 +29,7 @@ async def on_ready():
     print(f"=== Logged in as {client.user} (ID: {client.user.id}) ===")
     print("Waiting for guilds to sync...")
     
-    # サーバー情報が完全に読み込まれるまで少し待つ（3秒）
+    # サーバー情報が完全に読み込まれるまで3秒待つ
     await asyncio.sleep(3)
     
     connected = False
